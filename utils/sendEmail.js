@@ -15,7 +15,7 @@ const sendVerificationEmail = async (userEmail, userId, jwtToken) => {
             },
         });
 
-        const verificationUrl = `http://localhost:3000/user/verify-email/${userId}/${jwtToken}`;
+        const verificationUrl = `https://buildbridge-bakend.onrender.com/user/verify-email/${userId}/${jwtToken}`;
 
         const mailOptions = {
             from: '"Project Collaboration Hub" kritisarva@gmail.com',
