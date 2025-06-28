@@ -1,7 +1,7 @@
 import mongoose from "mongoose";
 import Technology from "./model/Technology.model.js"; // Adjust path as needed
 
-const MONGO_URI = "mongodb://localhost:27017/projectCollaboration"; // update with your DB
+const MONGO_URI = "mongodb+srv://kritika:root@cluster0.xfl7fuf.mongodb.net/projectCollaboration?retryWrites=true&w=majority"; // update with your DB
 
 const technologies = [
   { name: "HTML" },

@@ -25,7 +25,15 @@ const educationSchema = new mongoose.Schema({
     required: true,
   }
 }, {
-  timestamps: true
+  timestamps: true,
+   toJSON: {
+      virtuals: true,
+      versionKey: false,
+      transform: (_, ret) => {
+        ret.id = ret._id; // Add virtual id
+        delete ret._id;
+      },
+    },
 });
 
 const Education = mongoose.model('Education', educationSchema);

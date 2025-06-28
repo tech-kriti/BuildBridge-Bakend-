@@ -17,6 +17,14 @@ const skillSchema = new mongoose.Schema({
   },
 }, {
   timestamps: true,
+   toJSON: {
+      virtuals: true,
+      versionKey: false,
+      transform: (_, ret) => {
+        ret.id = ret._id; // Add virtual id
+        delete ret._id;
+      },
+    },
 });
 
 const Skill = mongoose.model('Skill', skillSchema);

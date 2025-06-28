@@ -29,7 +29,7 @@ export const addSkill = async (req, res) => {
 export const getSkills = async (req, res) => {
   try {
     const userId = req.params.userId;
-    const skills = await Skill.find({ userId });
+    const skills = await Skill.find( userId );
     res.status(200).json({ skills });
   } catch (err) {
     console.error("Error fetching skills:", err);
