@@ -7,39 +7,39 @@ import Notification from "../model/Notification.model.js";
 // 📤 Send Collaboration Request
 export const sendCollabReq = async (req, res) => {
   try {
-    const { projectId, receiverId } = req.body;
-    const senderId = req.user._id;
+    const { project_id, receiver_id } = req.body;
+    const sender_id = req.user.userId;
 
-    if (senderId.toString() === receiverId) {
+    if (sender_id.toString() === receiver_id) {
       return res.status(400).json({ error: "You cannot send a request to yourself." });
     }
 
-    const project = await Project.findById(projectId);
+    const project = await Project.findById(project_id);
     if (!project) {
       return res.status(404).json({ success: false, message: "Project not found" });
     }
 
-    const existingReq = await CollaborationRequest.findOne({ senderId, projectId });
+    const existingReq = await CollaborationRequest.findOne({ sender_id, project_id });
     if (existingReq) {
       return res.status(400).json({ success: false, message: "Request already exists" });
     }
 
-    const newReq = await CollaborationRequest.create({ senderId, receiverId, projectId });
+    const newReq = await CollaborationRequest.create({ sender_id, receiver_id, project_id,status:"pending" });
 
-    const populatedRequest = await CollaborationRequest.findById(newReq._id)
-      .populate("senderId", "name email")
-      .populate("projectId", "title");
+    const populatedRequest = await CollaborationRequest.findById(newReq.id)
+      .populate("sender_id", "name email")
+      .populate("project_id", "title");
 
     await Notification.create({
       type: "request",
-      content: `You have a new collaboration request on Project "${populatedRequest.projectId.title}" by "${populatedRequest.senderId.name}"`,
-      recipientId: receiverId,
-      requestId: populatedRequest._id,
-      senderId: senderId,
+      content: `You have a new collaboration request on Project "${populatedRequest.project_id.title}" by "${populatedRequest.sender_id.name}"`,
+      recipient_id: receiver_id,
+      request_id: populatedRequest._id,
+      sender_id: sender_id,
     });
 
     if (global.io) {
-      global.io.to(`user_${receiverId}`).emit("new_notification", {
+      global.io.to(`user_${receiver_id}`).emit("new_notification", {
         message: "You received a new collaboration request",
         timestamp: new Date(),
       });
@@ -72,7 +72,7 @@ export const getSentRequests = async (req, res) => {
 // 📥 Get received collaboration requests
 export const getRecievedRequest = async (req, res) => {
   try {
-    const receiverId = req.user._id;
+    const receiverId = req.user.userId;
 
     const requests = await CollaborationRequest.find({ receiverId })
       .populate("projectId", "title")
@@ -88,56 +88,58 @@ export const getRecievedRequest = async (req, res) => {
 // 🔄 Update request status (accept/reject)
 export const updateRequestStatus = async (req, res) => {
   try {
-    const requestId = req.params.id;
+    const id = req.params.id; // <-- ID from URL
     const { status } = req.body;
-    const userId = req.user._id;
-
+    const userId = req.user.userId;
+ console.log(id)
     if (!["accepted", "rejected"].includes(status)) {
       return res.status(400).json({ success: false, message: "Status must be 'accepted' or 'rejected'" });
     }
 
-    const request = await CollaborationRequest.findById(requestId);
+    // ✅ FIX: do NOT wrap id in an object
+    const request = await CollaborationRequest.findById(id);
     if (!request) {
       return res.status(404).json({ success: false, message: "Request not found" });
     }
 
-    if (request.receiverId.toString() !== userId.toString()) {
+    if (request.receiver_id.toString() !== userId.toString()) {
       return res.status(403).json({ success: false, message: "Not authorized" });
     }
 
     request.status = status;
     await request.save();
 
-    // If accepted, create a membership
+    // If accepted, create membership
     if (status === "accepted") {
       const exists = await Membership.findOne({
-        userId: request.senderId,
-        projectId: request.projectId,
+        userId: request.sender_id,
+        project_id: request.project_id,
       });
 
       if (!exists) {
         await Membership.create({
-          userId: request.senderId,
-          projectId: request.projectId,
+          userId: request.sender_id,
+          project_id: request.project_id,
           role: "member",
           status: "accepted",
         });
       }
     }
-
+const project = await Project.findById(request.project_id);
+const projectTitle = project?.title || "the project";
     const notifyContent =
       status === "accepted"
-        ? `Your collaboration request on Project #${request.projectId} was accepted`
-        : `Your collaboration request on Project #${request.projectId} was rejected`;
+        ? `Your collaboration request on Project #${projectTitle} was accepted`
+        : `Your collaboration request on Project #${projectTitle} was rejected`;
 
     await Notification.create({
       type: "info",
       content: notifyContent,
-      recipientId: request.senderId,
+      recipient_id: request.sender_id,
     });
 
     if (global.io) {
-      global.io.to(`user_${request.senderId}`).emit("new_notification", {
+      global.io.to(`user_${request.sender_id}`).emit("new_notification", {
         message: notifyContent,
         timestamp: new Date(),
       });

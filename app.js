@@ -35,7 +35,7 @@ app.use("/notify", notificationRouter);
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
-    origin: "https://buildbridge-frontend.onrender.com",
+    origin: "http://localhost:3001",
     methods: ["GET", "POST", "PATCH"],
     credentials: true,
   },

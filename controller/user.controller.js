@@ -204,26 +204,39 @@ export const resetPassword = async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 };
-
 export const searchUsersBySkill = async (req, res) => {
+  const { skillName } = req.query;
+
+  if (!skillName) {
+    return res.status(400).json({ success: false, message: "Skill name is required" });
+  }
+
   try {
-    const { skillName } = req.query;
-    if (!skillName) return res.status(400).json({ message: "Skill is required." });
+    // Step 1: Find technologies matching the skill name
+    const matchingTechnologies = await Technology.find({
+      name: { $regex: skillName, $options: "i" }, // case-insensitive match
+    });
 
-    const users = await User.find({}).populate({
-      path: "skills",
-      match: { skillName: new RegExp(skillName, "i") },
-      select: "skillName",
-    }).select("-password");
+    if (matchingTechnologies.length === 0) {
+      return res.status(200).json({ success: true, projects: [] });
+    }
 
-    const filteredUsers = users.filter(user => user.skills.length > 0);
-    res.status(200).json({ success: true, users: filteredUsers });
+    const techIds = matchingTechnologies.map((tech) => tech.id);
+
+    // Step 2: Find projects using those technologies
+    const projects = await Project.find({
+      technologies: { $in: techIds },
+    })
+      .populate("technologies", "name") // populate technology names
+      .populate("created_by", "userId name email") // populate user info
+      .select("title description technical_stack deadline"); // select project fields
+
+    res.status(200).json({ success: true, projects });
   } catch (error) {
-    console.error("Search users error:", error);
-    res.status(500).json({ success: false, message: "Failed to search users." });
+    console.error("Error searching projects by skill:", error);
+    res.status(500).json({ success: false, message: "Internal server error" });
   }
 };
-
 export const firebaseLogin = async (req, res) => {
   try {
     const { token } = req.body;

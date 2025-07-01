@@ -33,7 +33,7 @@ export const getEducation = async (req, res) => {
   try {
     const userId = req.params.userId;
 
-    const educations = await Education.find( userId );
+    const educations = await Education.find( {userId} );
 
     res.status(200).json({ message: "Fetched successfully", education: educations });
   } catch (err) {

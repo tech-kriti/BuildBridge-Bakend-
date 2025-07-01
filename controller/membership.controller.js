@@ -5,11 +5,12 @@ import Project from '../model/Project.model.js';
 // 📋 Get accepted members of a project
 export const getProjectMembers = async (req, res) => {
   try {
-    const { projectId } = req.params;
-    const project = await Project.findById(projectId);
+    const { project_id } = req.params;
+    console.log(project_id)
+    const project = await Project.findById(project_id);
     if (!project) return res.status(404).json({ success: false, message: 'Project not found' });
 
-    const members = await Membership.find({ projectId, status: 'accepted' })
+    const members = await Membership.find({ project_id, status: 'accepted' })
       .populate('userId', 'name email');
 
     res.status(200).json({
@@ -50,19 +51,19 @@ export const getMyProjects = async (req, res) => {
 export const removeMember = async (req, res) => {
   try {
     const { projectId, userId } = req.params;
-    const requester = req.user._id;
+    const requester = req.user.userId;
     const project = await Project.findById(projectId);
     if (!project) return res.status(404).json({ message: 'Project not found' });
 
     // Check permissions
     if (project.created_by.toString() !== requester.toString()) {
-      const reqMembership = await Membership.findOne({ projectId, userId: requester });
+  const reqMembership = await Membership.findOne({ project_id: projectId, userId: requester });
       if (!reqMembership || reqMembership.role !== 'admin') {
         return res.status(403).json({ message: 'Not authorized to remove members' });
       }
     }
 
-    const deleted = await Membership.findOneAndDelete({ projectId, userId });
+const deleted = await Membership.findOneAndDelete({ project_id: projectId, userId });
     if (!deleted) return res.status(404).json({ message: 'Member not found' });
 
     res.status(200).json({ success: true, message: 'Member removed from project' });
@@ -75,9 +76,9 @@ export const removeMember = async (req, res) => {
 // 🎖 Change a member’s role
 export const updateMemberRole = async (req, res) => {
   try {
-    const { projectId, userId } = req.params;
+    const { projectId,userId } = req.params;
     const { role } = req.body;
-    const requester = req.user._id;
+    const requester = req.user.userId;
     if (!['admin', 'member', 'viewer'].includes(role)) {
       return res.status(400).json({ message: 'Invalid role' });
     }
@@ -85,7 +86,7 @@ export const updateMemberRole = async (req, res) => {
     const project = await Project.findById(projectId);
     if (!project) return res.status(404).json({ message: 'Project not found' });
 
-    const reqMembership = await Membership.findOne({ projectId, userId: requester });
+   const reqMembership = await Membership.findOne({ project_id: projectId, userId: requester });
     if (
       project.created_by.toString() !== requester.toString() &&
       (!reqMembership || reqMembership.role !== 'admin')
@@ -96,8 +97,8 @@ export const updateMemberRole = async (req, res) => {
     if (role === 'admin' && project.created_by.toString() !== requester.toString()) {
       return res.status(403).json({ message: 'Only project creator can assign admins' });
     }
-
-    const mem = await Membership.findOne({ projectId, userId });
+  console.log(userId)
+   const mem = await Membership.findOne({ project_id: projectId, userId });
     if (!mem) return res.status(404).json({ message: 'Membership not found' });
     mem.role = role;
     await mem.save();
@@ -112,16 +113,16 @@ export const updateMemberRole = async (req, res) => {
 // 🚪 Leave project (self remove)
 export const leaveProject = async (req, res) => {
   try {
-    const { projectId } = req.params;
-    const userId = req.user._id;
+    const { project_id } = req.params;
+    const userId = req.user.userId;
 
-    const project = await Project.findById(projectId);
+    const project = await Project.findById(project_id);
     if (!project) return res.status(404).json({ message: 'Project not found' });
     if (project.created_by.toString() === userId.toString()) {
       return res.status(403).json({ message: 'Creator cannot leave their own project' });
     }
 
-    const deleted = await Membership.findOneAndDelete({ projectId, userId, status: 'accepted' });
+   const deleted = await Membership.findOneAndDelete({ project_id: project_id, userId, status: 'accepted' });
     if (!deleted) return res.status(404).json({ message: 'You are not a member of this project' });
 
     res.status(200).json({ success: true, message: 'You have left the project' });
