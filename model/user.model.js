@@ -6,7 +6,7 @@ const userSchema = new mongoose.Schema(
     name: {
       type: String,
       required: true,
-      match: /^[A-Za-z]+$/,
+      match: /^[a-zA-Z\s'-]+$/,
     },
     email: {
       type: String,
@@ -16,7 +16,7 @@ const userSchema = new mongoose.Schema(
     },
     password: {
       type: String,
-      required: true,
+      required: false,
     },
     profile_photo: {
       type: String,
